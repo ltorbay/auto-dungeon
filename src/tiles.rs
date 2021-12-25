@@ -8,6 +8,8 @@ const Y_TEMPLATE: [f32; 6] = [0., SMALL_SIDE_LENGTH, SMALL_SIDE_LENGTH, 0., -SMA
 pub struct Hexagon {
     pub x: [i16; 6],
     pub y: [i16; 6],
+
+    // TODO Add texture
 }
 
 impl Hexagon {
@@ -26,12 +28,17 @@ pub struct Coordinates {
 }
 
 impl Coordinates {
+    // FIXME this is approximate if offset goes too high - rounding issues -> use some sort of Coordinates::contains((x,y)) method
+    pub fn from_offset(offset: &(i16, i16), pixel_per_hexagon: i16) -> Coordinates {
+        let q_f32 = offset.0 as f32 / (1.5 * pixel_per_hexagon as f32 * SMALL_SIDE_LENGTH);
+        let r = ((offset.1 as f32 / (2. * pixel_per_hexagon as f32 * SMALL_SIDE_LENGTH)) - (q_f32 / 2.)).round() as i16;
+        let q = q_f32.round() as i16;
+        Coordinates { q, r }
+    }
+
     pub fn as_offset(&self, pixel_per_hexagon: i16) -> (i16, i16) {
-        let offset = ((pixel_per_hexagon as f32 * 1.5 * self.q as f32).round() as i16,
-                      // (pixel_per_hexagon as f32 * (self.q as f32 * SMALL_SIDE_LENGTH + self.r as f32 * 2. * SMALL_SIDE_LENGTH)).round() as i16);
-                      ((pixel_per_hexagon as f32 * SMALL_SIDE_LENGTH).round() * (self.q as f32 + self.r as f32 * 2.)) as i16);
-        println!("offset {:?}", offset);
-        offset
+        ((pixel_per_hexagon as f32 * 1.5 * self.q as f32).round() as i16,
+         ((pixel_per_hexagon as f32 * SMALL_SIDE_LENGTH).round() * (self.q as f32 + self.r as f32 * 2.)) as i16)
     }
 
     pub fn distance_to(&self, to: &Coordinates) -> i16 {
@@ -58,6 +65,7 @@ impl Grid {
         let mut qr_vec = Vec::new();
         for q in -radius..=radius {
             for r in -radius..=radius {
+                // TODO load all from json file for maps, with textures
                 let target_coordinates = Coordinates { q, r };
                 if center.distance_to(&target_coordinates) <= radius {
                     qr_vec.push(target_coordinates);

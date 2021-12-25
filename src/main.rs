@@ -7,11 +7,10 @@ use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels;
 use sdl2::pixels::Color;
-use sdl2::render::Canvas;
+use sdl2::render::{Canvas};
 use sdl2::video::Window;
 
 use tiles::{Coordinates, Grid};
-use tiles::Hexagon;
 
 mod tiles;
 
@@ -29,7 +28,7 @@ fn draw() -> Result<(), String> {
 
     let (screen_width, screen_height) = video_subsys.display_bounds(0)?.size();
     let origin = (screen_width / 2, screen_height / 2);
-    
+
     let window = video_subsys
         .window(
             "Auto dungeon",
@@ -40,27 +39,22 @@ fn draw() -> Result<(), String> {
         .opengl()
         .build()
         .map_err(|e| e.to_string())?;
-    
+
     let mut canvas = window.into_canvas()
         .build()
         .map_err(|e| e.to_string())?;
 
-    canvas.set_draw_color(pixels::Color::RGB(0, 0, 0));
+    canvas.set_draw_color(Color::RGB(0, 0, 0));
     canvas.clear();
+
+    const PIXEL_PER_HEXAGON: i16 = 50;
+    let grid = Grid::new(origin, 4, PIXEL_PER_HEXAGON)?;
     
     let base_color = pixels::Color::RGB(255, 255, 0);
-
-    // let mut r = 0;
-    // let mut q = 0;
-
-    let grid = Grid::new(origin, 2, 50)?;
-    grid.hexagons.iter().for_each(|tuple| {
-        println!("Creating {:?} for {:?}", tuple.1, tuple.0);
-        canvas.polygon(&tuple.1.x, &tuple.1.y, base_color)
-            .expect("Could not create polygon")
-    });
+    draw_grid(&mut canvas, &grid, base_color);
     canvas.present();
 
+    let new_color = pixels::Color::RGB(255, 0, 0);
     let mut events = sdl_context.event_pump()?;
     'main: loop {
         for event in events.poll_iter() {
@@ -68,25 +62,23 @@ fn draw() -> Result<(), String> {
                 Event::Quit { .. } => break 'main,
                 Event::KeyDown { keycode: Option::Some(Keycode::Escape), .. } => break 'main,
 
-                // Event::KeyDown { keycode: Option::Some(Keycode::Up), .. } => {
-                //     r -= 1;
-                //     new_hexagon(&mut canvas, base_color, r, q)?;
-                // }
-                // 
-                // Event::KeyDown { keycode: Option::Some(Keycode::Down), .. } => {
-                //     r += 1;
-                //     new_hexagon(&mut canvas, base_color, r, q)?;
-                // }
-                // 
-                // Event::KeyDown { keycode: Option::Some(Keycode::Left), .. } => {
-                //     q -= 1;
-                //     new_hexagon(&mut canvas, base_color, r, q)?;
-                // }
-                // 
-                // Event::KeyDown { keycode: Option::Some(Keycode::Right), .. } => {
-                //     q += 1;
-                //     new_hexagon(&mut canvas, base_color, r, q)?;
-                // }
+                Event::MouseButtonDown { x, y, .. } => {
+                    let coordinates = Coordinates::from_offset(&(x as i16 - origin.0 as i16, y as i16 - origin.1 as i16), PIXEL_PER_HEXAGON);
+                    // let hexagon = grid.hexagons.get(&coordinates);
+                    match grid.hexagons.get(&coordinates) {
+                        Some(hexagon) => {
+                            canvas.set_draw_color(Color::RGB(0, 0, 0));
+                            canvas.clear();
+                            draw_grid(&mut canvas, &grid, base_color);
+                            // canvas.set_blend_mode(BlendMode::Add);
+                            println!("Creating {:?} for {:?}", hexagon, coordinates);
+                            canvas.polygon(&hexagon.x, &hexagon.y, new_color)
+                                .expect("Could not create polygon");
+                            canvas.present();
+                        }
+                        None => println!("Area does not match any known hexagon x {} y {} calculated {:?}", x, y, coordinates),
+                    }
+                }
 
                 _ => {}
             }
@@ -95,6 +87,14 @@ fn draw() -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn draw_grid(canvas: &mut Canvas<Window>, grid: &Grid, base_color: Color) {
+    grid.hexagons.iter().for_each(|tuple| {
+        println!("Creating {:?} for {:?}", tuple.1, tuple.0);
+        canvas.polygon(&tuple.1.x, &tuple.1.y, base_color)
+            .expect("Could not create polygon")
+    });
 }
 
 // fn new_hexagon(canvas: &mut Canvas<Window>, base_color: Color, r: i16, q: i16) -> Result<(), String> {
