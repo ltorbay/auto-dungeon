@@ -27,7 +27,7 @@ fn draw() -> Result<(), String> {
     let video_subsys = sdl_context.video()?;
 
     let (screen_width, screen_height) = video_subsys.display_bounds(0)?.size();
-    let origin = (screen_width / 2, screen_height / 2);
+    let origin = ((screen_width / 2) as i16, (screen_height / 2) as i16);
 
     let window = video_subsys
         .window(
@@ -63,14 +63,12 @@ fn draw() -> Result<(), String> {
                 Event::KeyDown { keycode: Option::Some(Keycode::Escape), .. } => break 'main,
 
                 Event::MouseButtonDown { x, y, .. } => {
-                    let coordinates = Coordinates::from_offset(&(x as i16 - origin.0 as i16, y as i16 - origin.1 as i16), PIXEL_PER_HEXAGON);
-                    // let hexagon = grid.hexagons.get(&coordinates);
+                    let coordinates = Coordinates::from_offset(&(x as i16, y as i16), &origin, PIXEL_PER_HEXAGON);
                     match grid.hexagons.get(&coordinates) {
                         Some(hexagon) => {
                             canvas.set_draw_color(Color::RGB(0, 0, 0));
                             canvas.clear();
                             draw_grid(&mut canvas, &grid, base_color);
-                            // canvas.set_blend_mode(BlendMode::Add);
                             println!("Creating {:?} for {:?}", hexagon, coordinates);
                             canvas.polygon(&hexagon.x, &hexagon.y, new_color)
                                 .expect("Could not create polygon");

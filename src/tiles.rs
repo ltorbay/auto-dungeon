@@ -13,10 +13,10 @@ pub struct Hexagon {
 }
 
 impl Hexagon {
-    pub fn new(origin: (u32, u32), coordinates: &Coordinates, pixel_per_hexagon: i16) -> Hexagon {
+    pub fn new(origin: (i16, i16), coordinates: &Coordinates, pixel_per_hexagon: i16) -> Hexagon {
         let offset = coordinates.as_offset(pixel_per_hexagon);
-        let x = X_TEMPLATE.map(|f| (f * pixel_per_hexagon as f32).round() as i16 + origin.0 as i16 + offset.0);
-        let y = Y_TEMPLATE.map(|f| (f * pixel_per_hexagon as f32).round() as i16 + origin.1 as i16 + offset.1);
+        let x = X_TEMPLATE.map(|f| (f * pixel_per_hexagon as f32).round() as i16 + origin.0 + offset.0);
+        let y = Y_TEMPLATE.map(|f| (f * pixel_per_hexagon as f32).round() as i16 + origin.1 + offset.1);
         Hexagon { x, y }
     }
 }
@@ -28,11 +28,16 @@ pub struct Coordinates {
 }
 
 impl Coordinates {
-    // FIXME this is approximate if offset goes too high - rounding issues -> use some sort of Coordinates::contains((x,y)) method
-    pub fn from_offset(offset: &(i16, i16), pixel_per_hexagon: i16) -> Coordinates {
-        let q_f32 = offset.0 as f32 / (1.5 * pixel_per_hexagon as f32 * SMALL_SIDE_LENGTH);
-        let r = ((offset.1 as f32 / (2. * pixel_per_hexagon as f32 * SMALL_SIDE_LENGTH)) - (q_f32 / 2.)).round() as i16;
+    pub fn from_offset(offset: &(i16, i16), origin: &(i16, i16), pixel_per_hexagon: i16) -> Coordinates {
+        let x = offset.0 as f32 - origin.0 as f32;
+        let y = offset.1 as f32 - origin.1 as f32;
+        
+        let q_f32 = (2./3.) * x / pixel_per_hexagon as f32;
+        let r_f32 = ((-1./3.) * x + (3_f32.sqrt()/3.) * y ) / pixel_per_hexagon as f32;
+        
         let q = q_f32.round() as i16;
+        let r = r_f32.round() as i16;
+        
         Coordinates { q, r }
     }
 
@@ -60,7 +65,7 @@ pub struct Grid {
 }
 
 impl Grid {
-    pub fn new(origin: (u32, u32), radius: i16, pixel_per_hexagon: i16) -> Result<Grid, &'static str> {
+    pub fn new(origin: (i16, i16), radius: i16, pixel_per_hexagon: i16) -> Result<Grid, &'static str> {
         let center = Coordinates { q: 0, r: 0 };
         let mut qr_vec = Vec::new();
         for q in -radius..=radius {
