@@ -3,17 +3,16 @@ extern crate sdl2;
 use std::{thread, time};
 
 use sdl2::event::Event;
-use sdl2::gfx::primitives::DrawRenderer;
-use sdl2::image::{LoadTexture};
 use sdl2::keyboard::Keycode;
-use sdl2::pixels;
 use sdl2::pixels::Color;
 use sdl2::render::{Canvas, Texture};
 use sdl2::video::Window;
 
 use tiles::{Coordinates, Grid};
+use textures::{Textures, TerrainType};
 
 mod tiles;
+mod textures;
 
 // TODO use only i32 and f32 -> normalize units
 fn main() {
@@ -43,20 +42,19 @@ fn draw() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     
     let texture_creator = canvas.texture_creator();
-    let grass = texture_creator.load_texture("assets/tiles/grid/hexset_grid_temperate_flat_01.png")?;
+    let mut textures = Textures::new(&texture_creator);
 
-    canvas.set_draw_color(Color::RGB(0, 0, 0));
+    const COLOR_BLACK: Color = Color::RGB(0, 0, 0);
+    canvas.set_draw_color(COLOR_BLACK);
     canvas.clear();
 
     const PIXEL_PER_HEXAGON: i16 = 60;
     const GRID_RADIUS: i16 = 4;
     let grid = Grid::new(origin, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
     
-    let base_color = pixels::Color::RGB(255, 255, 0);
-    draw_grid(&mut canvas, &grid, &grass, GRID_RADIUS);
+    draw_grid(&mut canvas, &grid, textures.random_texture(TerrainType::Grass), GRID_RADIUS);
     canvas.present();
 
-    let new_color = pixels::Color::RGB(255, 0, 0);
     let mut events = sdl_context.event_pump()?;
     'main: loop {
         for event in events.poll_iter() {
@@ -68,14 +66,15 @@ fn draw() -> Result<(), String> {
                     let coordinates = Coordinates::from_offset(&(x as i16, y as i16), &origin, PIXEL_PER_HEXAGON);
                     match grid.hexagons.get(&coordinates) {
                         Some(hexagon) => {
-                            canvas.set_draw_color(Color::RGB(0, 0, 0));
+                            canvas.set_draw_color(COLOR_BLACK);
                             canvas.clear();
-                            draw_grid(&mut canvas, &grid, &grass, GRID_RADIUS);
+                            draw_grid(&mut canvas, &grid, textures.random_texture(TerrainType::Grass), GRID_RADIUS);
                             println!("Creating {:?} for {:?}", hexagon, coordinates);
-                            canvas.polygon(&hexagon.x, &hexagon.y, new_color)
-                                .expect("Could not create polygon");
                             
-                            canvas.copy(&grass, None, hexagon.rectangle)?;
+                            // canvas.polygon(&hexagon.x, &hexagon.y, pixels::Color::RGB(255, 0, 0))
+                            //     .expect("Could not create polygon");
+                            
+                            canvas.copy(textures.random_texture(TerrainType::Hill), None, hexagon.rectangle)?;
                             canvas.present();
                         }
                         None => println!("Area does not match any known hexagon x {} y {} calculated {:?}", x, y, coordinates),
@@ -91,9 +90,8 @@ fn draw() -> Result<(), String> {
     Ok(())
 }
 
+// TODO update texture to texture_creator + TerrainType stored in hexagon
 fn draw_grid(canvas: &mut Canvas<Window>, grid: &Grid, texture: &Texture, radius: i16) {
-    // TODO Add height in hexagons
-    // -> first print all lowest height, then go up
     let center = Coordinates { q: 0, r: 0 };
     for minus_q in -radius..=radius {
         for r in -radius..=radius {

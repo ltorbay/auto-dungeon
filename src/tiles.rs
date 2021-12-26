@@ -11,6 +11,7 @@ pub struct Hexagon {
     pub x: [i16; 6],
     pub y: [i16; 6],
     pub rectangle: Rect,
+    // TODO store TerrainType here
 }
 
 impl Hexagon {
