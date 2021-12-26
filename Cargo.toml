@@ -6,4 +6,5 @@ authors = ["ltorbay <louistorbay@gmail.com>"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sdl2 = { version = "0.35.1", features = ["gfx", "image"] }
+sdl2 = { version = "0.35.1", features = ["image"] }
+rand = "0.8.4"
