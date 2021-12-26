@@ -7,7 +7,7 @@ use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels;
 use sdl2::pixels::Color;
-use sdl2::render::{Canvas};
+use sdl2::render::{Canvas, Texture};
 use sdl2::video::Window;
 use sdl2::image::{InitFlag, LoadTexture};
 
@@ -15,10 +15,7 @@ use tiles::{Coordinates, Grid};
 
 mod tiles;
 
-// const SCREEN_WIDTH: i16 = 800;
-// const SCREEN_HEIGHT: i16 = 600;
-// const ORIGIN: (i16, i16) = (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
-
+// TODO use only i32 and f32 -> normalize units
 fn main() {
     draw().expect("Failed drawing")
 }
@@ -45,17 +42,17 @@ fn draw() -> Result<(), String> {
         .build()
         .map_err(|e| e.to_string())?;
     
-    // let texture_creator = canvas.texture_creator();
-    // let grass = texture_creator.load_texture("assets/grass.png")?;
+    let texture_creator = canvas.texture_creator();
+    let grass = texture_creator.load_texture("assets/tiles/grid/hexset_grid_temperate_flat_01.png")?;
 
     canvas.set_draw_color(Color::RGB(0, 0, 0));
     canvas.clear();
 
-    const PIXEL_PER_HEXAGON: i16 = 50;
+    const PIXEL_PER_HEXAGON: i16 = 60;
     let grid = Grid::new(origin, 4, PIXEL_PER_HEXAGON)?;
     
     let base_color = pixels::Color::RGB(255, 255, 0);
-    draw_grid(&mut canvas, &grid, base_color);
+    draw_grid(&mut canvas, &grid, &grass, base_color);
     canvas.present();
 
     let new_color = pixels::Color::RGB(255, 0, 0);
@@ -72,11 +69,12 @@ fn draw() -> Result<(), String> {
                         Some(hexagon) => {
                             canvas.set_draw_color(Color::RGB(0, 0, 0));
                             canvas.clear();
-                            draw_grid(&mut canvas, &grid, base_color);
+                            draw_grid(&mut canvas, &grid, &grass, base_color);
                             println!("Creating {:?} for {:?}", hexagon, coordinates);
                             canvas.polygon(&hexagon.x, &hexagon.y, new_color)
                                 .expect("Could not create polygon");
                             
+                            canvas.copy(&grass, None, hexagon.rectangle)?;
                             canvas.present();
                         }
                         None => println!("Area does not match any known hexagon x {} y {} calculated {:?}", x, y, coordinates),
@@ -92,11 +90,12 @@ fn draw() -> Result<(), String> {
     Ok(())
 }
 
-fn draw_grid(canvas: &mut Canvas<Window>, grid: &Grid, base_color: Color) {
+fn draw_grid(canvas: &mut Canvas<Window>, grid: &Grid, texture: &Texture, base_color: Color) {
     grid.hexagons.iter().for_each(|tuple| {
-        println!("Creating {:?} for {:?}", tuple.1, tuple.0);
-        canvas.polygon(&tuple.1.x, &tuple.1.y, base_color)
-            .expect("Could not create polygon")
+        canvas.copy(texture, None, tuple.1.rectangle)
+            .expect("Could not create texture");
+        // canvas.polygon(&tuple.1.x, &tuple.1.y, base_color)
+        //     .expect("Could not create polygon");
     });
 }
 

@@ -1,15 +1,16 @@
 use std::collections::HashMap;
 
-const SMALL_SIDE_LENGTH: f32 = 0.866;
-const X_TEMPLATE: [f32; 6] = [0., SMALL_SIDE_LENGTH, SMALL_SIDE_LENGTH, 0., -SMALL_SIDE_LENGTH, -SMALL_SIDE_LENGTH];
+use sdl2::rect::{Point, Rect};
+
+const FLAT_SIDE_LENGTH: f32 = 32. / 30.;
+const X_TEMPLATE: [f32; 6] = [0., FLAT_SIDE_LENGTH, FLAT_SIDE_LENGTH, 0., -FLAT_SIDE_LENGTH, -FLAT_SIDE_LENGTH];
 const Y_TEMPLATE: [f32; 6] = [1., 0.5, -0.5, -1., -0.5, 0.5];
 
 #[derive(Debug)]
 pub struct Hexagon {
     pub x: [i16; 6],
     pub y: [i16; 6],
-
-    // TODO Add texture
+    pub rectangle: Rect,
 }
 
 impl Hexagon {
@@ -17,7 +18,15 @@ impl Hexagon {
         let offset = coordinates.as_offset(pixel_per_hexagon);
         let x = X_TEMPLATE.map(|f| (f * pixel_per_hexagon as f32).round() as i16 + origin.0 + offset.0);
         let y = Y_TEMPLATE.map(|f| (f * pixel_per_hexagon as f32).round() as i16 + origin.1 + offset.1);
-        Hexagon { x, y }
+
+        let tile_center_offset = (48. - 30.) / 2.;
+        let pixel_ratio = pixel_per_hexagon as f32 / 30.;
+        let tile_center_offset_pixel = tile_center_offset * pixel_ratio;
+
+        let center = Point::new((origin.0 + offset.0) as i32, (origin.1 + offset.1 + tile_center_offset_pixel.round() as i16) as i32);
+        let rectangle = Rect::from_center(center, 32 * 4, 48 * 4);
+
+        Hexagon { x, y, rectangle }
     }
 }
 
@@ -32,7 +41,7 @@ impl Coordinates {
         let x = offset.0 as f32 - origin.0 as f32;
         let y = offset.1 as f32 - origin.1 as f32;
 
-        let q_f32 = ((-1. / 3.) * y + (3_f32.sqrt() / 3.) * x) / pixel_per_hexagon as f32;
+        let q_f32 = ((2_f32.sqrt() / 3.) * x - y / 3.) / pixel_per_hexagon as f32;
         let r_f32 = (2. / 3.) * y / pixel_per_hexagon as f32;
 
         let q = q_f32.round() as i16;
@@ -42,9 +51,9 @@ impl Coordinates {
     }
 
     pub fn as_offset(&self, pixel_per_hexagon: i16) -> (i16, i16) {
-        let x_f32 = (pixel_per_hexagon as f32 * SMALL_SIDE_LENGTH).round() * (2. * self.q as f32 + self.r as f32);
-        let y_f32 = pixel_per_hexagon as f32 * 1.5 * self.r as f32;
-         
+        let x_f32 = (pixel_per_hexagon as f32 * FLAT_SIDE_LENGTH).round() * (2. * self.q as f32 + self.r as f32);
+        let y_f32 = (28. / 30.) * pixel_per_hexagon as f32 * 1.5 * self.r as f32;
+
         (x_f32.round() as i16, y_f32.round() as i16)
     }
 
