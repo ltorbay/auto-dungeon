@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 const SMALL_SIDE_LENGTH: f32 = 0.866;
-const X_TEMPLATE: [f32; 6] = [1., 0.5, -0.5, -1., -0.5, 0.5];
-const Y_TEMPLATE: [f32; 6] = [0., SMALL_SIDE_LENGTH, SMALL_SIDE_LENGTH, 0., -SMALL_SIDE_LENGTH, -SMALL_SIDE_LENGTH];
+const X_TEMPLATE: [f32; 6] = [0., SMALL_SIDE_LENGTH, SMALL_SIDE_LENGTH, 0., -SMALL_SIDE_LENGTH, -SMALL_SIDE_LENGTH];
+const Y_TEMPLATE: [f32; 6] = [1., 0.5, -0.5, -1., -0.5, 0.5];
 
 #[derive(Debug)]
 pub struct Hexagon {
@@ -31,19 +31,21 @@ impl Coordinates {
     pub fn from_offset(offset: &(i16, i16), origin: &(i16, i16), pixel_per_hexagon: i16) -> Coordinates {
         let x = offset.0 as f32 - origin.0 as f32;
         let y = offset.1 as f32 - origin.1 as f32;
-        
-        let q_f32 = (2./3.) * x / pixel_per_hexagon as f32;
-        let r_f32 = ((-1./3.) * x + (3_f32.sqrt()/3.) * y ) / pixel_per_hexagon as f32;
-        
+
+        let q_f32 = ((-1. / 3.) * y + (3_f32.sqrt() / 3.) * x) / pixel_per_hexagon as f32;
+        let r_f32 = (2. / 3.) * y / pixel_per_hexagon as f32;
+
         let q = q_f32.round() as i16;
         let r = r_f32.round() as i16;
-        
+
         Coordinates { q, r }
     }
 
     pub fn as_offset(&self, pixel_per_hexagon: i16) -> (i16, i16) {
-        ((pixel_per_hexagon as f32 * 1.5 * self.q as f32).round() as i16,
-         ((pixel_per_hexagon as f32 * SMALL_SIDE_LENGTH).round() * (self.q as f32 + self.r as f32 * 2.)) as i16)
+        let x_f32 = (pixel_per_hexagon as f32 * SMALL_SIDE_LENGTH).round() * (2. * self.q as f32 + self.r as f32);
+        let y_f32 = pixel_per_hexagon as f32 * 1.5 * self.r as f32;
+         
+        (x_f32.round() as i16, y_f32.round() as i16)
     }
 
     pub fn distance_to(&self, to: &Coordinates) -> i16 {

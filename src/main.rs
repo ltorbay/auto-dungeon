@@ -9,6 +9,7 @@ use sdl2::pixels;
 use sdl2::pixels::Color;
 use sdl2::render::{Canvas};
 use sdl2::video::Window;
+use sdl2::image::{InitFlag, LoadTexture};
 
 use tiles::{Coordinates, Grid};
 
@@ -43,6 +44,9 @@ fn draw() -> Result<(), String> {
     let mut canvas = window.into_canvas()
         .build()
         .map_err(|e| e.to_string())?;
+    
+    // let texture_creator = canvas.texture_creator();
+    // let grass = texture_creator.load_texture("assets/grass.png")?;
 
     canvas.set_draw_color(Color::RGB(0, 0, 0));
     canvas.clear();
@@ -72,6 +76,7 @@ fn draw() -> Result<(), String> {
                             println!("Creating {:?} for {:?}", hexagon, coordinates);
                             canvas.polygon(&hexagon.x, &hexagon.y, new_color)
                                 .expect("Could not create polygon");
+                            
                             canvas.present();
                         }
                         None => println!("Area does not match any known hexagon x {} y {} calculated {:?}", x, y, coordinates),
