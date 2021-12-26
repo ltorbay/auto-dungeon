@@ -4,12 +4,12 @@ use std::{thread, time};
 
 use sdl2::event::Event;
 use sdl2::gfx::primitives::DrawRenderer;
+use sdl2::image::{LoadTexture};
 use sdl2::keyboard::Keycode;
 use sdl2::pixels;
 use sdl2::pixels::Color;
 use sdl2::render::{Canvas, Texture};
 use sdl2::video::Window;
-use sdl2::image::{InitFlag, LoadTexture};
 
 use tiles::{Coordinates, Grid};
 
@@ -49,10 +49,11 @@ fn draw() -> Result<(), String> {
     canvas.clear();
 
     const PIXEL_PER_HEXAGON: i16 = 60;
-    let grid = Grid::new(origin, 4, PIXEL_PER_HEXAGON)?;
+    const GRID_RADIUS: i16 = 4;
+    let grid = Grid::new(origin, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
     
     let base_color = pixels::Color::RGB(255, 255, 0);
-    draw_grid(&mut canvas, &grid, &grass, base_color);
+    draw_grid(&mut canvas, &grid, &grass, GRID_RADIUS);
     canvas.present();
 
     let new_color = pixels::Color::RGB(255, 0, 0);
@@ -69,7 +70,7 @@ fn draw() -> Result<(), String> {
                         Some(hexagon) => {
                             canvas.set_draw_color(Color::RGB(0, 0, 0));
                             canvas.clear();
-                            draw_grid(&mut canvas, &grid, &grass, base_color);
+                            draw_grid(&mut canvas, &grid, &grass, GRID_RADIUS);
                             println!("Creating {:?} for {:?}", hexagon, coordinates);
                             canvas.polygon(&hexagon.x, &hexagon.y, new_color)
                                 .expect("Could not create polygon");
@@ -90,20 +91,19 @@ fn draw() -> Result<(), String> {
     Ok(())
 }
 
-fn draw_grid(canvas: &mut Canvas<Window>, grid: &Grid, texture: &Texture, base_color: Color) {
-    grid.hexagons.iter().for_each(|tuple| {
-        canvas.copy(texture, None, tuple.1.rectangle)
-            .expect("Could not create texture");
-        // canvas.polygon(&tuple.1.x, &tuple.1.y, base_color)
-        //     .expect("Could not create polygon");
-    });
+fn draw_grid(canvas: &mut Canvas<Window>, grid: &Grid, texture: &Texture, radius: i16) {
+    // TODO Add height in hexagons
+    // -> first print all lowest height, then go up
+    let center = Coordinates { q: 0, r: 0 };
+    for minus_q in -radius..=radius {
+        for r in -radius..=radius {
+            let coordinates = Coordinates { q: - minus_q, r };
+            if center.distance_to(&coordinates) <= radius {
+                let hexagon = grid.hexagons.get(&coordinates)
+                    .unwrap_or_else(|| panic!("Missing hexagon for drawing {:?}", coordinates));
+                canvas.copy(texture, None, hexagon.rectangle)
+                    .expect("Could not create texture");
+            }
+        }
+    }
 }
-
-// fn new_hexagon(canvas: &mut Canvas<Window>, base_color: Color, r: i16, q: i16) -> Result<(), String> {
-//     let hexagon = Hexagon::new(ORIGIN, &Coordinates { r, q }, 50);
-//     canvas.polygon(&hexagon.x, &hexagon.y, base_color)?;
-//     canvas.present();
-//     println!("Created {:?}", hexagon);
-// 
-//     Ok(())
-// }
