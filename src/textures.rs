@@ -8,14 +8,14 @@ use sdl2::video::WindowContext;
 
 use tiles::Coordinates;
 
-const TEXTURES_BASE_DIR: &str = "assets/tiles/grid/hexset_grid_temperate_";
+const TEXTURES_BASE_DIR: &str = "assets/tiles/grid/hexset_grid_";
 
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
 pub enum TerrainType {
-    Grass = 1,
-    Hill = 2,
-    Mont = 3,
-    OFlat = 4,
+    Grass,
+    Hill,
+    Mont,
+    OFlat,
 }
 
 impl TerrainType {
@@ -38,10 +38,54 @@ impl TerrainType {
     }
 }
 
+#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+pub enum BiomeType {
+    Boreal,
+    Desert,
+    Snow,
+    Stone,
+    Swamp,
+    Temperate,
+    Warm,
+    WDeep,
+    WShallow,
+}
+
+impl BiomeType {
+    pub fn next(&self) -> BiomeType {
+        match self {
+            BiomeType::Boreal => BiomeType::Desert,
+            BiomeType::Desert => BiomeType::Snow,
+            BiomeType::Snow => BiomeType::Stone,
+            BiomeType::Stone => BiomeType::Swamp,
+            BiomeType::Swamp => BiomeType::Temperate,
+            BiomeType::Temperate => BiomeType::Warm,
+            BiomeType::Warm => BiomeType::WDeep,
+            BiomeType::WDeep => BiomeType::WShallow,
+            BiomeType::WShallow => BiomeType::Boreal,
+        }
+    }
+
+    pub fn previous(&self) -> BiomeType {
+        match self {
+            BiomeType::Boreal => BiomeType::WShallow,
+            BiomeType::Desert => BiomeType::Boreal,
+            BiomeType::Snow => BiomeType::Desert,
+            BiomeType::Stone => BiomeType::Snow,
+            BiomeType::Swamp => BiomeType::Stone,
+            BiomeType::Temperate => BiomeType::Swamp,
+            BiomeType::Warm => BiomeType::Temperate,
+            BiomeType::WDeep => BiomeType::Warm,
+            BiomeType::WShallow => BiomeType::WDeep,
+        }
+    }
+}
+
 pub struct Textures<'a> {
     texture_creator: &'a TextureCreator<WindowContext>,
     textures_locations: HashMap<TerrainType, Vec<&'a str>>,
-    textures: HashMap<TerrainType, Vec<Texture<'a>>>,
+    biomes_locations: HashMap<BiomeType, &'a str>,
+    textures: HashMap<(TerrainType, BiomeType), Vec<Texture<'a>>>,
 }
 
 impl<'a> Textures<'a> {
@@ -52,14 +96,27 @@ impl<'a> Textures<'a> {
                 (TerrainType::Mont, Vec::from(["mont_01.png", "mont_02.png", "mont_03.png"])),
                 (TerrainType::OFlat, Vec::from(["O_flat_01.png", "O_flat_02.png", "O_flat_03.png"]))]
         );
-        Textures { texture_creator, textures_locations, textures: Default::default() }
+        let biomes_locations = HashMap::from(
+            [(BiomeType::Boreal, "boreal_"),
+                (BiomeType::Desert, "desert_"),
+                (BiomeType::Snow, "snow_"),
+                (BiomeType::Stone, "stone1_"),
+                (BiomeType::Swamp, "swamp_"),
+                (BiomeType::Temperate, "temperate_"),
+                (BiomeType::Warm, "warm_"),
+                (BiomeType::WDeep, "wdeep_"),
+                (BiomeType::WShallow, "wshallow_"), ]
+        );
+
+        Textures { texture_creator, textures_locations, textures: Default::default(), biomes_locations }
     }
 
-    pub fn random_texture(&mut self, terrain_type: &TerrainType, coordinates: &mut Coordinates) -> &Texture<'a> {
-        if !self.textures.contains_key(terrain_type) {
-            let locations = self.textures_locations.get(terrain_type).expect("Missing texture type in textures locations");
+    pub fn random_texture(&mut self, texture_type: &(TerrainType, BiomeType), coordinates: &mut Coordinates) -> &Texture<'a> {
+        if !self.textures.contains_key(texture_type) {
+            let locations = self.textures_locations.get(&texture_type.0).expect("Missing texture type in textures locations");
             let loaded_textures = locations.iter().map(|location| {
                 let mut full_texture_path: String = TEXTURES_BASE_DIR.to_owned();
+                full_texture_path.push_str(self.biomes_locations.get(&texture_type.1).expect("Missing biome type in biome locations"));
                 full_texture_path.push_str(*location);
                 let texture: Texture<'a> = self.texture_creator.load_texture(full_texture_path)
                     .expect("Could not load texture");
@@ -67,9 +124,9 @@ impl<'a> Textures<'a> {
             })
                 .collect();
 
-            self.textures.insert(terrain_type.clone(), loaded_textures);
+            self.textures.insert(texture_type.clone(), loaded_textures);
         }
-        self.textures.get(terrain_type).expect("Unable to fetch texture")
+        self.textures.get(texture_type).expect("Unable to fetch texture")
             .iter()
             .choose(&mut StdRng::seed_from_u64(coordinates.quick_hash()))
             .expect("No texture associated with terrain")

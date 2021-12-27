@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 
 use sdl2::rect::{Point, Rect};
 
-use textures::TerrainType;
+use textures::{BiomeType, TerrainType};
 
 const FLAT_SIDE_LENGTH: f32 = 32. / 30.;
 const X_TEMPLATE: [f32; 6] = [0., FLAT_SIDE_LENGTH, FLAT_SIDE_LENGTH, 0., -FLAT_SIDE_LENGTH, -FLAT_SIDE_LENGTH];
@@ -15,11 +15,11 @@ pub struct Hexagon {
     pub x: [i16; 6],
     pub y: [i16; 6],
     pub rectangle: Rect,
-    pub terrain_type: TerrainType,
+    pub texture_type: (TerrainType, BiomeType),
 }
 
 impl Hexagon {
-    pub fn new(origin: (i16, i16), coordinates: &Coordinates, pixel_per_hexagon: i16, terrain_type: TerrainType) -> Hexagon {
+    pub fn new(origin: (i16, i16), coordinates: &Coordinates, pixel_per_hexagon: i16, texture_type: (TerrainType, BiomeType)) -> Hexagon {
         let offset = coordinates.as_offset(pixel_per_hexagon);
         let x = X_TEMPLATE.map(|f| (f * pixel_per_hexagon as f32).round() as i16 + origin.0 + offset.0);
         let y = Y_TEMPLATE.map(|f| (f * pixel_per_hexagon as f32).round() as i16 + origin.1 + offset.1);
@@ -32,7 +32,7 @@ impl Hexagon {
         let texture_ratio = (pixel_per_hexagon as f32 * 2. / 30.).round() as u32;
         let rectangle = Rect::from_center(center, 32 * texture_ratio, 48 * texture_ratio);
 
-        Hexagon { x, y, rectangle, terrain_type }
+        Hexagon { x, y, rectangle, texture_type }
     }
 }
 
@@ -101,7 +101,7 @@ impl Grid {
             }
         }
         let hexagons = qr_vec.iter()
-            .map(|coordinate| (*coordinate, Hexagon::new(origin, coordinate, pixel_per_hexagon, TerrainType::Grass)))
+            .map(|coordinate| (*coordinate, Hexagon::new(origin, coordinate, pixel_per_hexagon, (TerrainType::Grass, BiomeType::Temperate))))
             .collect();
 
         Ok(Grid { hexagons, q_max: radius, r_max: radius })
