@@ -29,7 +29,8 @@ impl Hexagon {
         let tile_center_offset_pixel = tile_center_offset * pixel_ratio;
 
         let center = Point::new((origin.0 + offset.0) as i32, (origin.1 + offset.1 + tile_center_offset_pixel.round() as i16) as i32);
-        let rectangle = Rect::from_center(center, 32 * 4, 48 * 4);
+        let texture_ratio = (pixel_per_hexagon as f32 * 2. / 30.).round() as u32;
+        let rectangle = Rect::from_center(center, 32 * texture_ratio, 48 * texture_ratio);
 
         Hexagon { x, y, rectangle, terrain_type }
     }

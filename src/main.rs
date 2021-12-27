@@ -11,6 +11,7 @@ use sdl2::video::Window;
 
 use textures::{TerrainType, Textures};
 use tiles::{Coordinates, Grid};
+use sdl2::rect::Rect;
 
 mod tiles;
 mod textures;
@@ -51,28 +52,41 @@ fn draw() -> Result<(), String> {
 
     const PIXEL_PER_HEXAGON: i16 = 60;
     const GRID_RADIUS: i16 = 4;
-    let mut grid = Grid::new(origin, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
 
+    let mut grid = Grid::new(origin, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
     draw_grid(&mut canvas, &grid, &mut textures, GRID_RADIUS);
+
+    let mut current_brush = TerrainType::Hill;
+    let texture_ratio = (PIXEL_PER_HEXAGON as f32 * 2. / 30.).round() as u32;
+    let brush_holder_rectangle = Rect::new((screen_width / 16) as i32, (screen_height / 16) as i32, 32 * texture_ratio, 48 * texture_ratio);
+    
+    canvas.copy(textures.random_texture(&current_brush, &mut Coordinates { q: 100, r: 100 }), None, brush_holder_rectangle)
+        .expect("Could not create texture");
     canvas.present();
 
+    let mut pristine = true;
     let mut events = sdl_context.event_pump()?;
     'main: loop {
         for event in events.poll_iter() {
             match event {
                 Event::Quit { .. } => break 'main,
                 Event::KeyDown { keycode: Option::Some(Keycode::Escape), .. } => break 'main,
-
+                
+                Event::KeyDown { keycode: Option::Some(Keycode::Left), ..} => {
+                    current_brush = current_brush.previous();
+                    pristine = false;
+                }
+                Event::KeyDown { keycode: Option::Some(Keycode::Right), ..} => {
+                    current_brush = current_brush.next();
+                    pristine = false;
+                }
+                
                 Event::MouseButtonDown { x, y, .. } => {
                     let coordinates = Coordinates::from_offset(&(x as i16, y as i16), &origin, PIXEL_PER_HEXAGON);
                     match grid.hexagons.get_mut(&coordinates) {
                         Some(hexagon) => {
-                            canvas.set_draw_color(COLOR_BLACK);
-                            canvas.clear();
-                            hexagon.terrain_type = TerrainType::Hill;
-                            draw_grid(&mut canvas, &grid, &mut textures, GRID_RADIUS);
-
-                            canvas.present();
+                            hexagon.terrain_type = current_brush.clone();
+                            pristine = false;
                         }
                         None => println!("Area does not match any known hexagon x {} y {} calculated {:?}", x, y, coordinates),
                     }
@@ -80,6 +94,17 @@ fn draw() -> Result<(), String> {
 
                 _ => {}
             }
+        }
+        if !pristine {
+            canvas.set_draw_color(COLOR_BLACK);
+            canvas.clear();
+            
+            draw_grid(&mut canvas, &grid, &mut textures, GRID_RADIUS);
+            canvas.copy(textures.random_texture(&current_brush, &mut Coordinates { q: 100, r: 100 }), None, brush_holder_rectangle)
+                .expect("Could not create texture");
+            
+            canvas.present();
+            pristine = true;
         }
         thread::sleep(time::Duration::from_millis(16));
     }

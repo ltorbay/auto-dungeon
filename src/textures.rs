@@ -8,12 +8,34 @@ use sdl2::video::WindowContext;
 
 use tiles::Coordinates;
 
-const TEXTURES_BASE_DIR: &str = "assets/tiles/grid/";
+const TEXTURES_BASE_DIR: &str = "assets/tiles/grid/hexset_grid_temperate_";
 
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
 pub enum TerrainType {
-    Grass,
-    Hill,
+    Grass = 1,
+    Hill = 2,
+    Mont = 3,
+    OFlat = 4,
+}
+
+impl TerrainType {
+    pub fn next(&self) -> TerrainType {
+        match self {
+            TerrainType::Grass => TerrainType::Hill,
+            TerrainType::Hill => TerrainType::Mont,
+            TerrainType::Mont => TerrainType::OFlat,
+            TerrainType::OFlat => TerrainType::Grass,
+        }
+    }
+
+    pub fn previous(&self) -> TerrainType {
+        match self {
+            TerrainType::Grass => TerrainType::OFlat,
+            TerrainType::Hill => TerrainType::Grass,
+            TerrainType::Mont => TerrainType::Hill,
+            TerrainType::OFlat => TerrainType::Mont,
+        }
+    }
 }
 
 pub struct Textures<'a> {
@@ -25,8 +47,10 @@ pub struct Textures<'a> {
 impl<'a> Textures<'a> {
     pub fn new(texture_creator: &'a sdl2::render::TextureCreator<sdl2::video::WindowContext>) -> Textures<'a> {
         let textures_locations = HashMap::from(
-            [(TerrainType::Grass, Vec::from(["hexset_grid_temperate_flat_01.png", "hexset_grid_temperate_flat_02.png", "hexset_grid_temperate_flat_03.png"])),
-                (TerrainType::Hill, Vec::from(["hexset_grid_temperate_hill_01.png", "hexset_grid_temperate_hill_02.png", "hexset_grid_temperate_hill_03.png"]))]
+            [(TerrainType::Grass, Vec::from(["flat_01.png", "flat_02.png", "flat_03.png"])),
+                (TerrainType::Hill, Vec::from(["hill_01.png", "hill_02.png", "hill_03.png"])),
+                (TerrainType::Mont, Vec::from(["mont_01.png", "mont_02.png", "mont_03.png"])),
+                (TerrainType::OFlat, Vec::from(["O_flat_01.png", "O_flat_02.png", "O_flat_03.png"]))]
         );
         Textures { texture_creator, textures_locations, textures: Default::default() }
     }
