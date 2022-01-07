@@ -54,9 +54,12 @@ fn draw() -> Result<(), String> {
     canvas.clear();
 
     const PIXEL_PER_HEXAGON: i32 = 15;
-    const GRID_RADIUS: i32 = 25;
+    const GRID_RADIUS: i32 = 30;
 
-    let noise_generator = NoiseGenerator::new(0);
+    let mut humidity_scale = 2.4;
+    let mut humidity_bias = 0.2;
+    
+    let mut noise_generator = NoiseGenerator::new(0, humidity_scale, humidity_bias);
     let mut grid = Grid::new(origin, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
 
     draw_grid(&mut canvas, &grid, &mut textures, GRID_RADIUS);
@@ -93,6 +96,30 @@ fn draw() -> Result<(), String> {
                     texture_selector.1 = texture_selector.1.next();
                     pristine = false;
                 }
+                Event::KeyDown { keycode: Option::Some(Keycode::P), .. } => {
+                    humidity_bias += 0.1;
+                    noise_generator = NoiseGenerator::new(0, humidity_scale, humidity_bias);
+                    grid = Grid::new(origin, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
+                    pristine = false;
+                }
+                Event::KeyDown { keycode: Option::Some(Keycode::M), .. } => {
+                    humidity_bias -= 0.1;
+                    noise_generator = NoiseGenerator::new(0, humidity_scale, humidity_bias);
+                    grid = Grid::new(origin, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
+                    pristine = false;
+                }
+                Event::KeyDown { keycode: Option::Some(Keycode::O), .. } => {
+                    humidity_scale += 0.1;
+                    noise_generator = NoiseGenerator::new(0, humidity_scale, humidity_bias);
+                    grid = Grid::new(origin, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
+                    pristine = false;
+                }
+                Event::KeyDown { keycode: Option::Some(Keycode::L), .. } => {
+                    humidity_scale -= 0.1;
+                    noise_generator = NoiseGenerator::new(0, humidity_scale, humidity_bias);
+                    grid = Grid::new(origin, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
+                    pristine = false;
+                }
 
                 Event::MouseButtonDown { x, y, .. } => {
                     let coordinates = Coordinates::from_offset(&(x, y), &origin, PIXEL_PER_HEXAGON);
@@ -119,7 +146,7 @@ fn draw() -> Result<(), String> {
             canvas.present();
             pristine = true;
         }
-        thread::sleep(time::Duration::from_millis(16));
+        thread::sleep(time::Duration::from_millis(1024/32));
     }
 
     Ok(())

@@ -59,11 +59,11 @@ impl BiomeType {
             (he, _hu) if he < 0. => BiomeType::WShallow,
             (he, _hu) if he < 0.05 => BiomeType::Desert,
             (he, _hu) if he > 2. => BiomeType::Snow,
-            (he, hu) if hu < -1. || he > 1.9 => BiomeType::Stone,
+            (he, hu) if hu < -0.8 || he > 1.8 => BiomeType::Stone,
             (_he, hu) if hu < -0.5 => BiomeType::Desert,
             (_he, hu) if hu < 0. => BiomeType::Warm,
-            (_he, hu) if hu < 0.5 => BiomeType::Temperate,
-            (_he, hu) if hu < 1. => BiomeType::Boreal,
+            (_he, hu) if hu < 0.4 => BiomeType::Temperate,
+            (_he, hu) if hu < 0.9 => BiomeType::Boreal,
             _ => BiomeType::Swamp
         }
     }
