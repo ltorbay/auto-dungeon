@@ -7,12 +7,13 @@ use sdl2::render::{Texture, TextureCreator};
 use sdl2::video::WindowContext;
 
 use tiles::Coordinates;
+use generator::NoiseGenerator;
 
 const TEXTURES_BASE_DIR: &str = "assets/tiles/grid/hexset_grid_";
 
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
 pub enum TerrainType {
-    Grass,
+    Flat,
     Hill,
     Mont,
     OFlat,
@@ -21,17 +22,17 @@ pub enum TerrainType {
 impl TerrainType {
     pub fn next(&self) -> TerrainType {
         match self {
-            TerrainType::Grass => TerrainType::Hill,
+            TerrainType::Flat => TerrainType::Hill,
             TerrainType::Hill => TerrainType::Mont,
             TerrainType::Mont => TerrainType::OFlat,
-            TerrainType::OFlat => TerrainType::Grass,
+            TerrainType::OFlat => TerrainType::Flat,
         }
     }
 
     pub fn previous(&self) -> TerrainType {
         match self {
-            TerrainType::Grass => TerrainType::OFlat,
-            TerrainType::Hill => TerrainType::Grass,
+            TerrainType::Flat => TerrainType::OFlat,
+            TerrainType::Hill => TerrainType::Flat,
             TerrainType::Mont => TerrainType::Hill,
             TerrainType::OFlat => TerrainType::Mont,
         }
@@ -40,43 +41,58 @@ impl TerrainType {
 
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
 pub enum BiomeType {
-    Boreal,
-    Desert,
     Snow,
-    Stone,
-    Swamp,
-    Temperate,
-    Warm,
     WDeep,
     WShallow,
+    Swamp,
+    Boreal,
+    Temperate,
+    Warm,
+    Desert,
+    Stone,
 }
 
 impl BiomeType {
+    pub fn new(height: f64, humidity: f64) -> BiomeType {
+        match (height, humidity) {
+            (he, _hu) if he < -0.4 => BiomeType::WDeep,
+            (he, _hu) if he < 0. => BiomeType::WShallow,
+            (he, _hu) if he < 0.05 => BiomeType::Desert,
+            (he, _hu) if he > 2. => BiomeType::Snow,
+            (he, hu) if hu < -1. || he > 1.9 => BiomeType::Stone,
+            (_he, hu) if hu < -0.5 => BiomeType::Desert,
+            (_he, hu) if hu < 0. => BiomeType::Warm,
+            (_he, hu) if hu < 0.5 => BiomeType::Temperate,
+            (_he, hu) if hu < 1. => BiomeType::Boreal,
+            _ => BiomeType::Swamp
+        }
+    }
+
     pub fn next(&self) -> BiomeType {
         match self {
-            BiomeType::Boreal => BiomeType::Desert,
-            BiomeType::Desert => BiomeType::Snow,
-            BiomeType::Snow => BiomeType::Stone,
-            BiomeType::Stone => BiomeType::Swamp,
-            BiomeType::Swamp => BiomeType::Temperate,
-            BiomeType::Temperate => BiomeType::Warm,
-            BiomeType::Warm => BiomeType::WDeep,
+            BiomeType::Snow => BiomeType::WDeep,
             BiomeType::WDeep => BiomeType::WShallow,
-            BiomeType::WShallow => BiomeType::Boreal,
+            BiomeType::WShallow => BiomeType::Swamp,
+            BiomeType::Swamp => BiomeType::Boreal,
+            BiomeType::Boreal => BiomeType::Temperate,
+            BiomeType::Temperate => BiomeType::Warm,
+            BiomeType::Warm => BiomeType::Desert,
+            BiomeType::Desert => BiomeType::Stone,
+            BiomeType::Stone => BiomeType::Snow,
         }
     }
 
     pub fn previous(&self) -> BiomeType {
         match self {
-            BiomeType::Boreal => BiomeType::WShallow,
-            BiomeType::Desert => BiomeType::Boreal,
-            BiomeType::Snow => BiomeType::Desert,
-            BiomeType::Stone => BiomeType::Snow,
-            BiomeType::Swamp => BiomeType::Stone,
-            BiomeType::Temperate => BiomeType::Swamp,
-            BiomeType::Warm => BiomeType::Temperate,
-            BiomeType::WDeep => BiomeType::Warm,
+            BiomeType::Snow => BiomeType::Stone,
+            BiomeType::WDeep => BiomeType::Snow,
             BiomeType::WShallow => BiomeType::WDeep,
+            BiomeType::Swamp => BiomeType::WShallow,
+            BiomeType::Boreal => BiomeType::Swamp,
+            BiomeType::Temperate => BiomeType::Boreal,
+            BiomeType::Warm => BiomeType::Temperate,
+            BiomeType::Desert => BiomeType::Warm,
+            BiomeType::Stone => BiomeType::Desert,
         }
     }
 }
@@ -91,7 +107,7 @@ pub struct Textures<'a> {
 impl<'a> Textures<'a> {
     pub fn new(texture_creator: &'a sdl2::render::TextureCreator<sdl2::video::WindowContext>) -> Textures<'a> {
         let textures_locations = HashMap::from(
-            [(TerrainType::Grass, Vec::from(["flat_01.png", "flat_02.png", "flat_03.png"])),
+            [(TerrainType::Flat, Vec::from(["flat_01.png", "flat_02.png", "flat_03.png"])),
                 (TerrainType::Hill, Vec::from(["hill_01.png", "hill_02.png", "hill_03.png"])),
                 (TerrainType::Mont, Vec::from(["mont_01.png", "mont_02.png", "mont_03.png"])),
                 (TerrainType::OFlat, Vec::from(["O_flat_01.png", "O_flat_02.png", "O_flat_03.png"]))]

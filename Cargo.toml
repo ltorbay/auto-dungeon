@@ -6,3 +6,4 @@ authors = ["ltorbay <louistorbay@gmail.com>"]
 [dependencies]
 sdl2 = { version = "0.35.1", features = ["image"] }
 rand = "0.8.4"
+noise = "0.7.0"
