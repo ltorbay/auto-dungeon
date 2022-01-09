@@ -1,4 +1,4 @@
-use noise::{Blend, Fbm, MultiFractal, Multiply, Negate, Perlin, RidgedMulti, ScaleBias, Seedable, Terrace, Turbulence, utils::*};
+use noise::{Blend, Curve, Fbm, MultiFractal, Multiply, Negate, Perlin, RidgedMulti, ScaleBias, Seedable, Terrace, Turbulence, utils::*};
 use noise::utils::PlaneMapBuilder;
 
 use textures::BiomeType;
@@ -39,7 +39,6 @@ impl NoiseGenerator {
             .set_y_bounds(0., 8.)
             .build();
 
-        // TODO maybe curve map before height to have bigger plains ?
         // height_map.write_to_file("height_map.png");
 
         let base_humidity = Fbm::new()
@@ -48,14 +47,6 @@ impl NoiseGenerator {
             .set_persistence(0.5)
             .set_lacunarity(2.208984375)
             .set_octaves(2);
-
-        // let base_humidity_map = PlaneMapBuilder::new(&base_humidity)
-        //     .set_size(width, height)
-        //     .set_x_bounds(0., 8.)
-        //     .set_y_bounds(0., 8.)
-        //     .build();
-        // 
-        // base_humidity_map.write_to_file("base_humidity_map.png");
 
         let inverted_height = Negate::new(&scaled_height);
         let multiply = Multiply::new(&inverted_height, &base_humidity);

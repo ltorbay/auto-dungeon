@@ -17,10 +17,11 @@ pub struct Hexagon {
     pub y: [i32; 6],
     pub rectangle: Rect,
     pub texture_type: (TerrainType, BiomeType),
+    pub height: u8,
 }
 
 impl Hexagon {
-    pub fn new(origin: (i32, i32), coordinates: &Coordinates, pixel_per_hexagon: i32, texture_type: (TerrainType, BiomeType)) -> Hexagon {
+    pub fn new(origin: (i32, i32), coordinates: &Coordinates, pixel_per_hexagon: i32, texture_type: (TerrainType, BiomeType), height: u8) -> Hexagon {
         let offset = coordinates.as_offset(pixel_per_hexagon);
         let x = X_TEMPLATE.map(|f| (f * pixel_per_hexagon as f32).round() as i32 + origin.0 + offset.0);
         let y = Y_TEMPLATE.map(|f| (f * pixel_per_hexagon as f32).round() as i32 + origin.1 + offset.1);
@@ -33,7 +34,7 @@ impl Hexagon {
         let texture_ratio = (pixel_per_hexagon as f32 * 2. / 30.).round() as u32;
         let rectangle = Rect::from_center(center, 32 * texture_ratio, 48 * texture_ratio);
 
-        Hexagon { x, y, rectangle, texture_type }
+        Hexagon { x, y, rectangle, texture_type, height }
     }
 }
 
@@ -44,6 +45,10 @@ pub struct Coordinates {
 }
 
 impl Coordinates {
+    pub fn shift(&self, q_offset: i32, r_offset: i32) -> Coordinates {
+        Coordinates { q: self.q + q_offset, r: self.r + r_offset }
+    }
+    
     pub fn from_offset(offset: &(i32, i32), origin: &(i32, i32), pixel_per_hexagon: i32) -> Coordinates {
         let x = offset.0 as f32 - origin.0 as f32;
         let y = offset.1 as f32 - origin.1 as f32;
@@ -103,11 +108,9 @@ impl Grid {
         let hexagons = qr_vec.iter()
             .map(|coordinate| {
                 let offset = coordinate.as_offset(pixel_per_hexagon);
-                (*coordinate, Hexagon::new(origin,
-                                           coordinate,
-                                           pixel_per_hexagon,
-                                           (TerrainType::Flat, BiomeType::new(noise_generator.height(&origin, offset.0, offset.1),
-                                                                              noise_generator.humidity(&origin, offset.0, offset.1)))))
+                let height = noise_generator.height(&origin, offset.0, offset.1);
+                let humidity = noise_generator.humidity(&origin, offset.0, offset.1);
+                (*coordinate, Hexagon::new(origin, coordinate, pixel_per_hexagon, (TerrainType::Flat, BiomeType::new(height, humidity)), (height + 0.4).floor() as u8))
             })
             .collect();
 
