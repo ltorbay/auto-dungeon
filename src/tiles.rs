@@ -21,8 +21,7 @@ pub struct Hexagon {
 }
 
 impl Hexagon {
-    pub fn new(origin: (i32, i32), coordinates: &Coordinates, pixel_per_hexagon: i32, texture_type: (TerrainType, BiomeType), height: u8) -> Hexagon {
-        let offset = coordinates.as_offset(pixel_per_hexagon);
+    pub fn new(origin: (i32, i32), offset: (i32, i32), pixel_per_hexagon: i32, texture_type: (TerrainType, BiomeType), height: u8) -> Hexagon {
         let x = X_TEMPLATE.map(|f| (f * pixel_per_hexagon as f32).round() as i32 + origin.0 + offset.0);
         let y = Y_TEMPLATE.map(|f| (f * pixel_per_hexagon as f32).round() as i32 + origin.1 + offset.1);
 
@@ -48,7 +47,8 @@ impl Coordinates {
     pub fn shift(&self, q_offset: i32, r_offset: i32) -> Coordinates {
         Coordinates { q: self.q + q_offset, r: self.r + r_offset }
     }
-    
+
+    // TODO take center from param ?
     pub fn from_offset(offset: &(i32, i32), origin: &(i32, i32), pixel_per_hexagon: i32) -> Coordinates {
         let x = offset.0 as f32 - origin.0 as f32;
         let y = offset.1 as f32 - origin.1 as f32;
@@ -62,9 +62,12 @@ impl Coordinates {
         Coordinates { q, r }
     }
 
-    pub fn as_offset(&self, pixel_per_hexagon: i32) -> (i32, i32) {
-        let x_f32 = (pixel_per_hexagon as f32 * FLAT_SIDE_LENGTH).round() * (2. * self.q as f32 + self.r as f32);
-        let y_f32 = (28. / 30.) * pixel_per_hexagon as f32 * 1.5 * self.r as f32;
+    pub fn as_offset(&self, center: Coordinates, pixel_per_hexagon: i32) -> (i32, i32) {
+        let normalized_q = (self.q - center.q) as f32;
+        let normalized_r = (self.r - center.r) as f32;
+
+        let x_f32 = (pixel_per_hexagon as f32 * FLAT_SIDE_LENGTH).round() * (2. * normalized_q + normalized_r);
+        let y_f32 = (28. / 30.) * pixel_per_hexagon as f32 * 1.5 * normalized_r as f32;
 
         (x_f32.round() as i32, y_f32.round() as i32)
     }
@@ -94,11 +97,12 @@ pub struct Grid {
 }
 
 impl Grid {
-    pub fn new(origin: (i32, i32), noise_generator: &NoiseGenerator, radius: i32, pixel_per_hexagon: i32) -> Result<Grid, &'static str> {
-        let center = Coordinates { q: 0, r: 0 };
+    pub fn new(origin: (i32, i32), center: Coordinates, noise_generator: &NoiseGenerator, radius: i32, pixel_per_hexagon: i32) -> Result<Grid, &'static str> {
+        // TODO ability to shift grid by coordinates instead of rewriting it ?
         let mut qr_vec = Vec::new();
-        for q in -radius..=radius {
-            for r in -radius..=radius {
+        println!("center: {:?} q: {:?} r: {:?}", center, (center.q - radius)..=(center.q + radius), (center.r - radius)..=(center.r + radius));
+        for q in (center.q - radius)..=(center.q + radius) {
+            for r in (center.r - radius)..=(center.r + radius) {
                 let target_coordinates = Coordinates { q, r };
                 if center.distance_to(&target_coordinates) <= radius {
                     qr_vec.push(target_coordinates);
@@ -107,13 +111,14 @@ impl Grid {
         }
         let hexagons = qr_vec.iter()
             .map(|coordinate| {
-                let offset = coordinate.as_offset(pixel_per_hexagon);
-                let height = noise_generator.height(&origin, offset.0, offset.1);
-                let humidity = noise_generator.humidity(&origin, offset.0, offset.1);
-                (*coordinate, Hexagon::new(origin, coordinate, pixel_per_hexagon, (TerrainType::Flat, BiomeType::new(height, humidity)), (height + 0.4).floor() as u8))
+                let world_offset = coordinate.shift(-center.q, -center.r)
+                    .as_offset(center, pixel_per_hexagon);
+                let height = noise_generator.height(&origin, world_offset.0, world_offset.1);
+                let humidity = noise_generator.humidity(&origin, world_offset.0, world_offset.1);
+                (*coordinate, Hexagon::new(origin, coordinate.as_offset(center, pixel_per_hexagon), pixel_per_hexagon, (TerrainType::Flat, BiomeType::new(height, humidity)), (height + 0.4).floor() as u8))
             })
             .collect();
 
-        Ok(Grid { hexagons, q_max: radius, r_max: radius })
+        Ok(Grid { hexagons, q_max: center.q + radius, r_max: center.r + radius })
     }
 }

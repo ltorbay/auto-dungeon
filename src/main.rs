@@ -23,7 +23,7 @@ mod generator;
 const PIXEL_PER_HEXAGON: i32 = 15;
 const HEIGHT_SHIFT: i32 = -26 * PIXEL_PER_HEXAGON / 30;
 const SHADOW_SHIFT_X: i32 = PIXEL_PER_HEXAGON / 10;
-const SHADOW_SHIFT_Y: i32 = - PIXEL_PER_HEXAGON / 6;
+const SHADOW_SHIFT_Y: i32 = -PIXEL_PER_HEXAGON / 6;
 
 
 // TODO use only i32 and f32 -> normalize units
@@ -66,16 +66,10 @@ fn draw() -> Result<(), String> {
     let mut humidity_bias = 0.2;
 
     let mut noise_generator = NoiseGenerator::new(0, humidity_scale, humidity_bias);
-    let mut grid = Grid::new(origin, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
+    let mut center_coordinates = Coordinates { q: 0, r: 0 };
+    let mut grid = Grid::new(origin, center_coordinates, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
 
-    draw_grid(&mut canvas, &grid, &mut textures, GRID_RADIUS);
-
-    let mut texture_selector = (TerrainType::Hill, BiomeType::Desert);
-    let texture_ratio = (PIXEL_PER_HEXAGON as f32 * 2. / 30.).round() as u32;
-    let brush_holder_rectangle = Rect::new((screen_width / 16) as i32, (screen_height / 16) as i32, 32 * texture_ratio, 48 * texture_ratio);
-
-    canvas.copy(textures.random_texture(&texture_selector, &mut Coordinates { q: 100, r: 100 }), None, brush_holder_rectangle)
-        .expect("Could not create texture");
+    draw_grid(center_coordinates, &mut canvas, &grid, &mut textures, GRID_RADIUS);
     canvas.present();
 
     let mut pristine = true;
@@ -87,68 +81,58 @@ fn draw() -> Result<(), String> {
                 Event::KeyDown { keycode: Option::Some(Keycode::Escape), .. } => break 'main,
 
                 Event::KeyDown { keycode: Option::Some(Keycode::Left), .. } => {
-                    texture_selector.0 = texture_selector.0.previous();
+                    center_coordinates = center_coordinates.shift(2, 0);
+                    grid = Grid::new(origin, center_coordinates, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
                     pristine = false;
                 }
                 Event::KeyDown { keycode: Option::Some(Keycode::Right), .. } => {
-                    texture_selector.0 = texture_selector.0.next();
+                    center_coordinates = center_coordinates.shift(-2, 0);
+                    grid = Grid::new(origin, center_coordinates, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
                     pristine = false;
                 }
                 Event::KeyDown { keycode: Option::Some(Keycode::Up), .. } => {
-                    texture_selector.1 = texture_selector.1.previous();
+                    center_coordinates = center_coordinates.shift(-1, 2);
+                    grid = Grid::new(origin, center_coordinates, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
                     pristine = false;
                 }
                 Event::KeyDown { keycode: Option::Some(Keycode::Down), .. } => {
-                    texture_selector.1 = texture_selector.1.next();
+                    center_coordinates = center_coordinates.shift(1, -2);
+                    grid = Grid::new(origin, center_coordinates, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
                     pristine = false;
                 }
                 Event::KeyDown { keycode: Option::Some(Keycode::P), .. } => {
                     humidity_bias += 0.1;
                     noise_generator = NoiseGenerator::new(0, humidity_scale, humidity_bias);
-                    grid = Grid::new(origin, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
+                    grid = Grid::new(origin, center_coordinates, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
                     pristine = false;
                 }
                 Event::KeyDown { keycode: Option::Some(Keycode::M), .. } => {
                     humidity_bias -= 0.1;
                     noise_generator = NoiseGenerator::new(0, humidity_scale, humidity_bias);
-                    grid = Grid::new(origin, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
+                    grid = Grid::new(origin, center_coordinates, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
                     pristine = false;
                 }
                 Event::KeyDown { keycode: Option::Some(Keycode::O), .. } => {
                     humidity_scale += 0.1;
                     noise_generator = NoiseGenerator::new(0, humidity_scale, humidity_bias);
-                    grid = Grid::new(origin, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
+                    grid = Grid::new(origin, center_coordinates, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
                     pristine = false;
                 }
                 Event::KeyDown { keycode: Option::Some(Keycode::L), .. } => {
                     humidity_scale -= 0.1;
                     noise_generator = NoiseGenerator::new(0, humidity_scale, humidity_bias);
-                    grid = Grid::new(origin, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
+                    grid = Grid::new(origin, center_coordinates, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
                     pristine = false;
                 }
-
-                Event::MouseButtonDown { x, y, .. } => {
-                    let coordinates = Coordinates::from_offset(&(x, y), &origin, PIXEL_PER_HEXAGON);
-                    match grid.hexagons.get_mut(&coordinates) {
-                        Some(hexagon) => {
-                            hexagon.texture_type = texture_selector.clone();
-                            pristine = false;
-                        }
-                        None => println!("Area does not match any known hexagon x {} y {} calculated {:?}", x, y, coordinates),
-                    }
-                }
-
                 _ => {}
             }
         }
         if !pristine {
+            println!("Refreshing scene !");
             canvas.set_draw_color(COLOR_BLACK);
             canvas.clear();
-            
-            draw_grid(&mut canvas, &grid, &mut textures, GRID_RADIUS);
-            canvas.copy(textures.random_texture(&texture_selector, &mut Coordinates { q: 100, r: 100 }), None, brush_holder_rectangle)
-                .expect("Could not create texture");
-
+            // TODO refresh grid instead of recreating it ?
+            draw_grid(center_coordinates, &mut canvas, &grid, &mut textures, GRID_RADIUS);
             canvas.present();
             pristine = true;
         }
@@ -158,9 +142,8 @@ fn draw() -> Result<(), String> {
     Ok(())
 }
 
-fn draw_grid(canvas: &mut Canvas<Window>, grid: &Grid, textures: &mut Textures, radius: i32) {
+fn draw_grid(center: Coordinates, canvas: &mut Canvas<Window>, grid: &Grid, textures: &mut Textures, radius: i32) {
     // TODO take center as params, and shift q,r bounds accordingly
-    let center = Coordinates { q: 0, r: 0 };
     for elevation in 0..=3 {
         grid.hexagons
             .iter()
@@ -169,9 +152,9 @@ fn draw_grid(canvas: &mut Canvas<Window>, grid: &Grid, textures: &mut Textures, 
                                                            &hexagon.y.map(|val| (val + (SHADOW_SHIFT_Y + HEIGHT_SHIFT) * elevation as i32) as i16),
                                                            Color::RGBA(0, 0, 0, 40))
                 .expect("Could not create shadow polygon"));
-        
-        for r in -radius..=radius {
-            for minus_q in -radius..=radius {
+
+        for r in (center.r - radius)..=(center.r + radius) {
+            for minus_q in (-center.q - radius)..=(-center.q + radius) {
                 match Option::Some(Coordinates { q: -minus_q, r })
                     .filter(|coordinates| center.distance_to(coordinates) <= radius)
                     .map(|coordinates| grid.hexagons.get(&coordinates)

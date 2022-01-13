@@ -6,4 +6,4 @@ authors = ["ltorbay <louistorbay@gmail.com>"]
 [dependencies]
 sdl2 = { version = "0.35.1", features = ["image", "gfx"] }
 rand = "0.8.4"
-noise = "0.7.0"
+noise = { git = "https://github.com/Razaekel/noise-rs", branch = "develop" }
