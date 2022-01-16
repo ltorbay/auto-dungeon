@@ -1,8 +1,7 @@
-use noise::{Fbm, MultiFractal, Multiply, Negate, Perlin, ScaleBias, Terrace, Turbulence, utils::*, Value, NoiseFn};
+use noise::{Fbm, MultiFractal, Perlin, ScaleBias, Terrace, NoiseFn, Curve};
+use divide::Divide;
 
 pub struct NoiseGenerator {
-    width: usize,
-    height: usize,
     height_source_module: Box<dyn NoiseFn<f64, 2>>,
     humidity_source_module: Box<dyn NoiseFn<f64, 2>>,
 }
@@ -13,37 +12,21 @@ impl NoiseGenerator {
 
         let scaled_height = NoiseGenerator::get_height_noise_function(seed);
 
-        // let height_map = PlaneMapBuilder::new(&scaled_height)
-        //     .set_size(width, height)
-        //     .set_x_bounds(0., 8.)
-        //     .set_y_bounds(0., 8.)
-        //     .build();
-
-        // height_map.write_to_file("height_map.png");
-
         let base_humidity = Fbm::<Perlin>::new(seed + 1)
-            .set_frequency(0.25)
+            .set_frequency(0.10)
             .set_persistence(0.5)
             .set_lacunarity(2.208984375)
             .set_octaves(2);
 
-        let inverted_height = Negate::new(NoiseGenerator::get_height_noise_function(seed));
-        let multiply = Multiply::new(inverted_height, base_humidity);
+        let biased_height = ScaleBias::new(NoiseGenerator::get_height_noise_function(seed))
+            .set_bias(1.)
+            .set_scale(3.);
+        let multiply = Divide::new(base_humidity, biased_height);
         let scaled_humidity = ScaleBias::new(multiply)
             .set_scale(humidity_scale)
             .set_bias(humidity_bias);
 
-        // let humidity_map = PlaneMapBuilder::new(&scaled_humidity)
-        //     .set_size(width, height)
-        //     .set_x_bounds(0., 8.)
-        //     .set_y_bounds(0., 8.)
-        //     .build();
-        // humidity_map.write_to_file("humidity_map.png");
-
-
         NoiseGenerator {
-            width : 1024,
-            height : 1024,
             height_source_module:  scaled_height,
             humidity_source_module: Box::new(scaled_humidity),
         }
@@ -62,25 +45,29 @@ impl NoiseGenerator {
             .add_control_point(2.);
 
         let scaled_height = ScaleBias::new(height_terrace)
-            .set_scale(1.15)
-            .set_bias(0.25);
-        Box::new(scaled_height)
+            .set_scale(2.5)
+            .set_bias(0.5);
+        let curved_height = Curve::new(scaled_height)
+            .add_control_point(-3., -3.)
+            .add_control_point(-2.5, -2.)
+            .add_control_point(-2., -0.5)
+            .add_control_point(-1., -0.1)
+            .add_control_point(0., 0.2)
+            .add_control_point(1., 0.4)
+            .add_control_point(2., 1.5)
+            .add_control_point(2.5, 3.)
+            .add_control_point(3., 5.);
+        // TODO rivers
+        Box::new(curved_height)
     }
 
     pub fn height(&self, origin: &(i32, i32), x: i32, y: i32) -> f64 {
-        // TODO limit with width and height
-        // TODO normalize query bounds
-        // self.height_map.get_value(((x + origin.0) / 2) as usize, ((y + origin.1) / 2) as usize)
-
         let normalized_x = (x + origin.0) as f64 / 2.;
         let normalized_y = (y + origin.1) as f64 / 2.;
         self.height_source_module.get([normalized_x / 128., normalized_y / 128.])
     }
 
     pub fn humidity(&self, origin: &(i32, i32), x: i32, y: i32) -> f64 {
-        // TODO
-        // self.humidity_map.get_value(((x + origin.0) / 2) as usize, ((y + origin.1) / 2) as usize)
-
         let normalized_x = (x + origin.0) as f64 / 2.;
         let normalized_y = (y + origin.1) as f64 / 2.;
         self.humidity_source_module.get([normalized_x / 128., normalized_y / 128.])

@@ -48,20 +48,6 @@ impl Coordinates {
         Coordinates { q: self.q + q_offset, r: self.r + r_offset }
     }
 
-    // TODO take center from param ?
-    pub fn from_offset(offset: &(i32, i32), origin: &(i32, i32), pixel_per_hexagon: i32) -> Coordinates {
-        let x = offset.0 as f32 - origin.0 as f32;
-        let y = offset.1 as f32 - origin.1 as f32;
-
-        let q_f32 = ((2_f32.sqrt() / 3.) * x - y / 3.) / pixel_per_hexagon as f32;
-        let r_f32 = (2. / 3.) * y / pixel_per_hexagon as f32;
-
-        let q = q_f32.round() as i32;
-        let r = r_f32.round() as i32;
-
-        Coordinates { q, r }
-    }
-
     pub fn as_offset(&self, center: Coordinates, pixel_per_hexagon: i32) -> (i32, i32) {
         let normalized_q = (self.q - center.q) as f32;
         let normalized_r = (self.r - center.r) as f32;
@@ -98,7 +84,11 @@ pub struct Grid {
 
 impl Grid {
     pub fn new(origin: (i32, i32), center: Coordinates, noise_generator: &NoiseGenerator, radius: i32, pixel_per_hexagon: i32) -> Result<Grid, &'static str> {
-        // TODO ability to shift grid by coordinates instead of rewriting it ?
+        // TODO edge detection, so tiles are aware of their neighbors
+        // -> make peaks at the top
+        // -> make deserts for beach on low altitudes only if close to water or sand
+        // TODO generate hex based random elements according to biome (cactuses, trees...)
+        // TODO ability to shift grid by coordinates instead of rewriting it
         let mut qr_vec = Vec::new();
         println!("center: {:?} q: {:?} r: {:?}", center, (center.q - radius)..=(center.q + radius), (center.r - radius)..=(center.r + radius));
         for q in (center.q - radius)..=(center.q + radius) {

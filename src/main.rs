@@ -8,17 +8,17 @@ use sdl2::event::Event;
 use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
-use sdl2::rect::Rect;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 
 use generator::NoiseGenerator;
-use textures::{BiomeType, TerrainType, Textures};
+use textures::{Textures};
 use tiles::{Coordinates, Grid, Hexagon};
 
 mod tiles;
 mod textures;
 mod generator;
+mod divide;
 
 const PIXEL_PER_HEXAGON: i32 = 15;
 const HEIGHT_SHIFT: i32 = -26 * PIXEL_PER_HEXAGON / 30;
@@ -26,7 +26,6 @@ const SHADOW_SHIFT_X: i32 = PIXEL_PER_HEXAGON / 10;
 const SHADOW_SHIFT_Y: i32 = -PIXEL_PER_HEXAGON / 6;
 
 
-// TODO use only i32 and f32 -> normalize units
 fn main() {
     draw().expect("Failed drawing")
 }
@@ -62,8 +61,8 @@ fn draw() -> Result<(), String> {
 
     const GRID_RADIUS: i32 = 25;
 
-    let mut humidity_scale = 2.4;
-    let mut humidity_bias = 0.2;
+    let mut humidity_scale = 0.97;
+    let mut humidity_bias = 0.1;
 
     let mut noise_generator = NoiseGenerator::new(0, humidity_scale, humidity_bias);
     let mut center_coordinates = Coordinates { q: 0, r: 0 };
@@ -113,13 +112,13 @@ fn draw() -> Result<(), String> {
                     pristine = false;
                 }
                 Event::KeyDown { keycode: Option::Some(Keycode::O), .. } => {
-                    humidity_scale += 0.1;
+                    humidity_scale += 0.01;
                     noise_generator = NoiseGenerator::new(0, humidity_scale, humidity_bias);
                     grid = Grid::new(origin, center_coordinates, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
                     pristine = false;
                 }
                 Event::KeyDown { keycode: Option::Some(Keycode::L), .. } => {
-                    humidity_scale -= 0.1;
+                    humidity_scale -= 0.01;
                     noise_generator = NoiseGenerator::new(0, humidity_scale, humidity_bias);
                     grid = Grid::new(origin, center_coordinates, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
                     pristine = false;
@@ -131,7 +130,6 @@ fn draw() -> Result<(), String> {
             println!("Refreshing scene !");
             canvas.set_draw_color(COLOR_BLACK);
             canvas.clear();
-            // TODO refresh grid instead of recreating it ?
             draw_grid(center_coordinates, &mut canvas, &grid, &mut textures, GRID_RADIUS);
             canvas.present();
             pristine = true;
@@ -143,8 +141,7 @@ fn draw() -> Result<(), String> {
 }
 
 fn draw_grid(center: Coordinates, canvas: &mut Canvas<Window>, grid: &Grid, textures: &mut Textures, radius: i32) {
-    // TODO take center as params, and shift q,r bounds accordingly
-    for elevation in 0..=3 {
+    for elevation in 0..=4 {
         grid.hexagons
             .iter()
             .filter(|(_, hexagon)| elevation > 0 && hexagon.height == elevation)
