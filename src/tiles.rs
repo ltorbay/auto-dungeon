@@ -90,7 +90,6 @@ impl Grid {
         // TODO generate hex based random elements according to biome (cactuses, trees...)
         // TODO ability to shift grid by coordinates instead of rewriting it
         let mut qr_vec = Vec::new();
-        println!("center: {:?} q: {:?} r: {:?}", center, (center.q - radius)..=(center.q + radius), (center.r - radius)..=(center.r + radius));
         for q in (center.q - radius)..=(center.q + radius) {
             for r in (center.r - radius)..=(center.r + radius) {
                 let target_coordinates = Coordinates { q, r };

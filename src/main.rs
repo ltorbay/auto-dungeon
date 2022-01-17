@@ -34,22 +34,32 @@ fn draw() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsys = sdl_context.video()?;
 
-    let (screen_width, screen_height) = video_subsys.display_bounds(0)?.size();
-    let origin = ((screen_width / 2) as i32, (screen_height / 2) as i32);
+    let (display_width, display_height) = video_subsys.display_bounds(0)?.size();
+    println!("display {}x{}", display_width, display_height);
 
     let window = video_subsys
         .window(
             "Auto dungeon",
-            screen_width,
-            screen_height,
+            1920 / 2,
+            1080 / 2,
         )
-        .fullscreen_desktop()
+        .borderless()
+        // .fullscreen_desktop()
         .opengl()
         .build()
         .map_err(|e| e.to_string())?;
 
     let mut canvas = window.into_canvas()
         .build()
+        .map_err(|e| e.to_string())?;
+
+    let (screen_width, screen_height) = (1792, 1120);
+    let origin = ((screen_width / 2) as i32, (screen_height / 2) as i32);
+
+    // TODO Apparently scales the whole screen each time which is highly ineffective, see:
+    // https://stackoverflow.com/questions/11043969/how-to-scale-to-resolution-in-sdl
+    
+    canvas.set_logical_size(screen_width, screen_height)
         .map_err(|e| e.to_string())?;
 
     let texture_creator = canvas.texture_creator();
@@ -127,7 +137,6 @@ fn draw() -> Result<(), String> {
             }
         }
         if !pristine {
-            println!("Refreshing scene !");
             canvas.set_draw_color(COLOR_BLACK);
             canvas.clear();
             draw_grid(center_coordinates, &mut canvas, &grid, &mut textures, GRID_RADIUS);
@@ -142,13 +151,15 @@ fn draw() -> Result<(), String> {
 
 fn draw_grid(center: Coordinates, canvas: &mut Canvas<Window>, grid: &Grid, textures: &mut Textures, radius: i32) {
     for elevation in 0..=4 {
-        grid.hexagons
-            .iter()
-            .filter(|(_, hexagon)| elevation > 0 && hexagon.height == elevation)
-            .for_each(|(_, hexagon)| canvas.filled_polygon(&hexagon.x.map(|val| (val + SHADOW_SHIFT_X * elevation as i32) as i16),
-                                                           &hexagon.y.map(|val| (val + (SHADOW_SHIFT_Y + HEIGHT_SHIFT) * elevation as i32) as i16),
-                                                           Color::RGBA(0, 0, 0, 40))
-                .expect("Could not create shadow polygon"));
+        if elevation > 0 {
+            grid.hexagons
+                .iter()
+                .filter(|(_, hexagon)| hexagon.height == elevation)
+                .for_each(|(_, hexagon)| canvas.filled_polygon(&hexagon.x.map(|val| (val + SHADOW_SHIFT_X as i32) as i16),
+                                                               &hexagon.y.map(|val| (val + SHADOW_SHIFT_Y + HEIGHT_SHIFT * elevation as i32) as i16),
+                                                               Color::RGBA(0, 0, 0, 40))
+                    .expect("Could not create shadow polygon"));
+        }
 
         for r in (center.r - radius)..=(center.r + radius) {
             for minus_q in (-center.q - radius)..=(-center.q + radius) {
