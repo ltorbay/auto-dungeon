@@ -14,6 +14,7 @@ use sdl2::video::Window;
 use generator::NoiseGenerator;
 use textures::{Textures};
 use tiles::{Coordinates, Grid, Hexagon};
+use sdl2::image::InitFlag;
 
 mod tiles;
 mod textures;
@@ -32,6 +33,7 @@ fn main() {
 
 fn draw() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
+    let image_context = sdl2::image::init(InitFlag::PNG)?;
     let video_subsys = sdl_context.video()?;
 
     let (display_width, display_height) = video_subsys.display_bounds(0)?.size();
