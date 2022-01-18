@@ -33,7 +33,8 @@ fn main() {
 
 fn draw() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
-    let image_context = sdl2::image::init(InitFlag::PNG)?;
+    // TODO is this useful ?
+    sdl2::image::init(InitFlag::PNG)?;
     let video_subsys = sdl_context.video()?;
 
     let (display_width, display_height) = video_subsys.display_bounds(0)?.size();
@@ -42,8 +43,8 @@ fn draw() -> Result<(), String> {
     let window = video_subsys
         .window(
             "Auto dungeon",
-            1920 / 2,
-            1080 / 2,
+            display_width,
+            display_height,
         )
         .borderless()
         // .fullscreen_desktop()
