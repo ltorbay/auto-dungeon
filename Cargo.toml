@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["ltorbay <louistorbay@gmail.com>"]
 
 [dependencies]
+clap = { version = "3.0.10", features = ["derive"] }
 sdl2 = { version = "0.35.1", features = ["image", "gfx"] }
 rand = "0.8.4"
 noise = { git = "https://github.com/Razaekel/noise-rs", branch = "develop" }
