@@ -1,5 +1,9 @@
+use std::cmp::Ordering;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
+use std::convert::TryInto;
+use std::error::Error;
+use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 
 use sdl2::rect::{Point, Rect};
@@ -13,6 +17,7 @@ const Y_TEMPLATE: [f32; 6] = [1., 0.5, -0.5, -1., -0.5, 0.5];
 
 #[derive(Debug)]
 pub struct Hexagon {
+    // TODO make hexagon centered at 0
     pub x: [i32; 6],
     pub y: [i32; 6],
     pub rectangle: Rect,
@@ -44,8 +49,33 @@ pub struct Coordinates {
 }
 
 impl Coordinates {
+    const NEIGHBORS_PERMUTATIONS: [(i8, i8); 6] = [(1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)];
+
+    pub fn build_hexagonal_area(center: Coordinates, radius: i32) -> Vec<Coordinates> {
+        let mut qr_vec = Vec::new();
+        for q in (center.q - radius)..=(center.q + radius) {
+            for r in (center.r - radius)..=(center.r + radius) {
+                let target_coordinates = Coordinates { q, r };
+                // TODO work with q and r bounds instead of center and radius ?
+                if center.distance_to(&target_coordinates) <= radius {
+                    qr_vec.push(target_coordinates);
+                }
+            }
+        }
+        qr_vec
+    }
+    
     pub fn shift(&self, q_offset: i32, r_offset: i32) -> Coordinates {
         Coordinates { q: self.q + q_offset, r: self.r + r_offset }
+    }
+
+    pub fn neighbors(&self) -> [Coordinates; 6] {
+        Coordinates::NEIGHBORS_PERMUTATIONS
+            .iter()
+            .map(|(q_permutation, r_permutation)| self.shift(*q_permutation as i32, *r_permutation as i32))
+            .collect::<Vec<Coordinates>>()
+            .try_into()
+            .unwrap()
     }
 
     pub fn as_offset(&self, center: Coordinates, pixel_per_hexagon: i32) -> (i32, i32) {
@@ -78,8 +108,6 @@ impl Coordinates {
 
 pub struct Grid {
     pub hexagons: HashMap<Coordinates, Hexagon>,
-    pub q_max: i32,
-    pub r_max: i32,
 }
 
 impl Grid {
@@ -108,6 +136,20 @@ impl Grid {
             })
             .collect();
 
-        Ok(Grid { hexagons, q_max: center.q + radius, r_max: center.r + radius })
+        Ok(Grid { hexagons })
+    }
+
+    pub fn at(&mut self, origin: (i32, i32), center: Coordinates, noise_generator: &NoiseGenerator, locations: &[Coordinates], pixel_per_hexagon: i32) {
+        // TODO move origin and related transformations into noise_generator ?
+        let hexagons = locations.iter()
+            .map(|coordinates| (*coordinates, self.hexagons.remove(coordinates).unwrap_or_else(|| {
+                let world_offset = coordinates.shift(-center.q, -center.r)
+                    .as_offset(center, pixel_per_hexagon);
+                let height = noise_generator.height(&origin, world_offset.0, world_offset.1);
+                let humidity = noise_generator.humidity(&origin, world_offset.0, world_offset.1);
+                Hexagon::new(origin, coordinates.as_offset(center, pixel_per_hexagon), pixel_per_hexagon, (TerrainType::Flat, BiomeType::new(height, humidity)), (height + 0.4).floor() as u8)
+            })))
+            .collect();
+        self.hexagons = hexagons;
     }
 }

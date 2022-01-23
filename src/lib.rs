@@ -66,6 +66,7 @@ pub fn run(full_screen: bool, width: u32, height: u32) -> Result<(), Box<dyn Err
 
     let mut noise_generator = NoiseGenerator::new(0, humidity_scale, humidity_bias);
     let mut center_coordinates = Coordinates { q: 0, r: 0 };
+    let mut area = Coordinates::build_hexagonal_area(center_coordinates, GRID_RADIUS);
     let mut grid = Grid::new(ORIGIN, center_coordinates, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
 
     draw_grid(center_coordinates, &mut canvas, &grid, &mut textures, GRID_RADIUS);
@@ -81,7 +82,9 @@ pub fn run(full_screen: bool, width: u32, height: u32) -> Result<(), Box<dyn Err
 
                 Event::KeyDown { keycode: Option::Some(Keycode::Left), .. } => {
                     center_coordinates = center_coordinates.shift(2, 0);
-                    grid = Grid::new(ORIGIN, center_coordinates, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
+                    area = Coordinates::build_hexagonal_area(center_coordinates, GRID_RADIUS);
+                    grid.at(ORIGIN, center_coordinates, &noise_generator, &area, PIXEL_PER_HEXAGON);
+                    // grid = Grid::new(ORIGIN, center_coordinates, &noise_generator, GRID_RADIUS, PIXEL_PER_HEXAGON)?;
                     pristine = false;
                 }
                 Event::KeyDown { keycode: Option::Some(Keycode::Right), .. } => {
