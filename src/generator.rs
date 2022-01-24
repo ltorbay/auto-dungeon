@@ -1,5 +1,7 @@
-use noise::{Fbm, MultiFractal, Perlin, ScaleBias, Terrace, NoiseFn, Curve};
+use noise::{Curve, Fbm, MultiFractal, NoiseFn, Perlin, ScaleBias, Terrace};
+
 use divide::Divide;
+use tiles::Coordinates;
 
 pub struct NoiseGenerator {
     height_source_module: Box<dyn NoiseFn<f64, 2>>,
@@ -7,6 +9,8 @@ pub struct NoiseGenerator {
 }
 
 impl NoiseGenerator {
+    const MAP_CENTER: Coordinates = Coordinates { q: 0, r: 0 };
+
     pub fn new(seed: u32, humidity_scale: f64, humidity_bias: f64) -> NoiseGenerator {
         println!("Generating new noise map with humidity scale {} and bias {}", humidity_scale, humidity_bias);
 
@@ -27,7 +31,7 @@ impl NoiseGenerator {
             .set_bias(humidity_bias);
 
         NoiseGenerator {
-            height_source_module:  scaled_height,
+            height_source_module: scaled_height,
             humidity_source_module: Box::new(scaled_humidity),
         }
     }
@@ -61,16 +65,14 @@ impl NoiseGenerator {
         Box::new(curved_height)
     }
 
-    pub fn height(&self, origin: &(i32, i32), x: i32, y: i32) -> f64 {
-        let normalized_x = (x + origin.0) as f64 / 2.;
-        let normalized_y = (y + origin.1) as f64 / 2.;
-        self.height_source_module.get([normalized_x / 128., normalized_y / 128.])
+    pub fn height(&self, coordinates: &Coordinates) -> f64 {
+        let (x,y) = coordinates.as_offset(&NoiseGenerator::MAP_CENTER);
+        self.height_source_module.get([-x as f64 / 512., -y as f64 / 512.])
     }
 
-    pub fn humidity(&self, origin: &(i32, i32), x: i32, y: i32) -> f64 {
-        let normalized_x = (x + origin.0) as f64 / 2.;
-        let normalized_y = (y + origin.1) as f64 / 2.;
-        self.humidity_source_module.get([normalized_x / 128., normalized_y / 128.])
+    pub fn humidity(&self, coordinates: &Coordinates) -> f64 {
+        let (x,y) = coordinates.as_offset(&NoiseGenerator::MAP_CENTER);
+        self.humidity_source_module.get([-x as f64 / 512., -y as f64 / 512.])
     }
 }
 

@@ -1,45 +1,18 @@
-use std::cmp::Ordering;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::convert::TryInto;
-use std::error::Error;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 
-use sdl2::rect::{Point, Rect};
-
+use ::{FLAT_SIDE_LENGTH, PIXEL_PER_HEXAGON};
 use generator::NoiseGenerator;
-use textures::{BiomeType, TerrainType};
-
-const FLAT_SIDE_LENGTH: f32 = 32. / 30.;
-const X_TEMPLATE: [f32; 6] = [0., FLAT_SIDE_LENGTH, FLAT_SIDE_LENGTH, 0., -FLAT_SIDE_LENGTH, -FLAT_SIDE_LENGTH];
-const Y_TEMPLATE: [f32; 6] = [1., 0.5, -0.5, -1., -0.5, 0.5];
+use renderer::Printer;
+use textures::{BiomeType, TerrainType, Textures};
 
 #[derive(Debug)]
 pub struct Hexagon {
-    // TODO make hexagon centered at 0
-    pub x: [i32; 6],
-    pub y: [i32; 6],
-    pub rectangle: Rect,
     pub texture_type: (TerrainType, BiomeType),
     pub height: u8,
-}
-
-impl Hexagon {
-    pub fn new(origin: (i32, i32), offset: (i32, i32), pixel_per_hexagon: i32, texture_type: (TerrainType, BiomeType), height: u8) -> Hexagon {
-        let x = X_TEMPLATE.map(|f| (f * pixel_per_hexagon as f32).round() as i32 + origin.0 + offset.0);
-        let y = Y_TEMPLATE.map(|f| (f * pixel_per_hexagon as f32).round() as i32 + origin.1 + offset.1);
-
-        let tile_center_offset = (48. - 30.) / 2.;
-        let pixel_ratio = pixel_per_hexagon as f32 / 30.;
-        let tile_center_offset_pixel = tile_center_offset * pixel_ratio;
-
-        let center = Point::new((origin.0 + offset.0) as i32, (origin.1 + offset.1 + tile_center_offset_pixel.round() as i32) as i32);
-        let texture_ratio = (pixel_per_hexagon as f32 * 2. / 30.).round() as u32;
-        let rectangle = Rect::from_center(center, 32 * texture_ratio, 48 * texture_ratio);
-
-        Hexagon { x, y, rectangle, texture_type, height }
-    }
 }
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug)]
@@ -51,12 +24,12 @@ pub struct Coordinates {
 impl Coordinates {
     const NEIGHBORS_PERMUTATIONS: [(i8, i8); 6] = [(1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)];
 
+    // TODO make Area struct
     pub fn build_hexagonal_area(center: Coordinates, radius: i32) -> Vec<Coordinates> {
         let mut qr_vec = Vec::new();
         for q in (center.q - radius)..=(center.q + radius) {
             for r in (center.r - radius)..=(center.r + radius) {
                 let target_coordinates = Coordinates { q, r };
-                // TODO work with q and r bounds instead of center and radius ?
                 if center.distance_to(&target_coordinates) <= radius {
                     qr_vec.push(target_coordinates);
                 }
@@ -64,7 +37,7 @@ impl Coordinates {
         }
         qr_vec
     }
-    
+
     pub fn shift(&self, q_offset: i32, r_offset: i32) -> Coordinates {
         Coordinates { q: self.q + q_offset, r: self.r + r_offset }
     }
@@ -78,12 +51,12 @@ impl Coordinates {
             .unwrap()
     }
 
-    pub fn as_offset(&self, center: Coordinates, pixel_per_hexagon: i32) -> (i32, i32) {
+    pub fn as_offset(&self, center: &Coordinates) -> (i32, i32) {
         let normalized_q = (self.q - center.q) as f32;
         let normalized_r = (self.r - center.r) as f32;
 
-        let x_f32 = (pixel_per_hexagon as f32 * FLAT_SIDE_LENGTH).round() * (2. * normalized_q + normalized_r);
-        let y_f32 = (28. / 30.) * pixel_per_hexagon as f32 * 1.5 * normalized_r as f32;
+        let x_f32 = (PIXEL_PER_HEXAGON as f32 * FLAT_SIDE_LENGTH).round() * (2. * normalized_q + normalized_r);
+        let y_f32 = (28. / 30.) * PIXEL_PER_HEXAGON as f32 * 1.5 * normalized_r as f32;
 
         (x_f32.round() as i32, y_f32.round() as i32)
     }
@@ -111,45 +84,64 @@ pub struct Grid {
 }
 
 impl Grid {
-    pub fn new(origin: (i32, i32), center: Coordinates, noise_generator: &NoiseGenerator, radius: i32, pixel_per_hexagon: i32) -> Result<Grid, &'static str> {
+    pub fn new(noise_generator: &NoiseGenerator, area: &[Coordinates]) -> Result<Grid, &'static str> {
         // TODO edge detection, so tiles are aware of their neighbors
         // -> make peaks at the top
         // -> make deserts for beach on low altitudes only if close to water or sand
         // TODO generate hex based random elements according to biome (cactuses, trees...)
-        // TODO ability to shift grid by coordinates instead of rewriting it
-        let mut qr_vec = Vec::new();
-        for q in (center.q - radius)..=(center.q + radius) {
-            for r in (center.r - radius)..=(center.r + radius) {
-                let target_coordinates = Coordinates { q, r };
-                if center.distance_to(&target_coordinates) <= radius {
-                    qr_vec.push(target_coordinates);
-                }
-            }
-        }
-        let hexagons = qr_vec.iter()
-            .map(|coordinate| {
-                let world_offset = coordinate.shift(-center.q, -center.r)
-                    .as_offset(center, pixel_per_hexagon);
-                let height = noise_generator.height(&origin, world_offset.0, world_offset.1);
-                let humidity = noise_generator.humidity(&origin, world_offset.0, world_offset.1);
-                (*coordinate, Hexagon::new(origin, coordinate.as_offset(center, pixel_per_hexagon), pixel_per_hexagon, (TerrainType::Flat, BiomeType::new(height, humidity)), (height + 0.4).floor() as u8))
+        let hexagons = area.iter()
+            .map(|coordinates| {
+                let height = noise_generator.height(coordinates);
+                let humidity = noise_generator.humidity(coordinates);
+                (*coordinates, Hexagon { texture_type: (TerrainType::Flat, BiomeType::new(height, humidity)), height: (height + 0.4).floor() as u8 })
             })
             .collect();
 
         Ok(Grid { hexagons })
     }
 
-    pub fn at(&mut self, origin: (i32, i32), center: Coordinates, noise_generator: &NoiseGenerator, locations: &[Coordinates], pixel_per_hexagon: i32) {
+    pub fn at(&mut self, noise_generator: &NoiseGenerator, area: &[Coordinates]) {
         // TODO move origin and related transformations into noise_generator ?
-        let hexagons = locations.iter()
+        let hexagons = area.iter()
             .map(|coordinates| (*coordinates, self.hexagons.remove(coordinates).unwrap_or_else(|| {
-                let world_offset = coordinates.shift(-center.q, -center.r)
-                    .as_offset(center, pixel_per_hexagon);
-                let height = noise_generator.height(&origin, world_offset.0, world_offset.1);
-                let humidity = noise_generator.humidity(&origin, world_offset.0, world_offset.1);
-                Hexagon::new(origin, coordinates.as_offset(center, pixel_per_hexagon), pixel_per_hexagon, (TerrainType::Flat, BiomeType::new(height, humidity)), (height + 0.4).floor() as u8)
+                let height = noise_generator.height(coordinates);
+                let humidity = noise_generator.humidity(coordinates);
+                Hexagon { texture_type: (TerrainType::Flat, BiomeType::new(height, humidity)), height: (height + 0.4).floor() as u8 }
             })))
             .collect();
         self.hexagons = hexagons;
+    }
+
+    pub fn draw(&self, printer: &mut Printer, center: Coordinates, textures: &mut Textures, radius: i32) {
+        printer.clear();
+        for elevation in 0..=4 {
+            if elevation > 0 {
+                self.hexagons
+                    .iter()
+                    .filter(|(_, hexagon)| hexagon.height == elevation)
+                    .for_each(|(coordinates, _)| {
+                        printer.print_shadow(&center, coordinates, elevation);
+                    });
+            }
+
+            // TODO printing only the upper layer looks nice, but we can have holes if the tile below is too low !
+            for r in (center.r - radius)..=(center.r + radius) {
+                for minus_q in (-center.q - radius)..=(-center.q + radius) {
+                    match Option::Some(Coordinates { q: -minus_q, r })
+                        .filter(|coordinates| center.distance_to(coordinates) <= radius)
+                        .map(|coordinates| self.hexagons.get(&coordinates)
+                            .map(|hexagon| (coordinates, hexagon)))
+                        .flatten()
+                        .filter(|(_, hexagon)| hexagon.height >= elevation) {
+                        None => {}
+                        Some((mut coordinates, hexagon)) => {
+                            let texture = textures.random_texture(&hexagon.texture_type, &mut coordinates);
+                            printer.print_texture(&center, &coordinates, texture, elevation);
+                        }
+                    }
+                }
+            }
+        }
+        printer.present();
     }
 }
