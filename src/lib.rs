@@ -1,6 +1,8 @@
 extern crate noise;
 extern crate rand;
 extern crate sdl2;
+#[macro_use]
+extern crate glium;
 
 use std::{thread, time};
 use std::error::Error;
@@ -18,6 +20,8 @@ mod textures;
 mod generator;
 mod divide;
 mod renderer;
+mod shaders;
+mod runner;
 
 const LOGICAL_SCREEN_WIDTH: u32 = 1792;
 const LOGICAL_SCREEN_HEIGHT: u32 = 1120;

@@ -8,3 +8,5 @@ clap = { version = "3.0.10", features = ["derive"] }
 sdl2 = { version = "0.35.1", features = ["image", "gfx"] }
 rand = "0.8.4"
 noise = { git = "https://github.com/Razaekel/noise-rs", branch = "develop" }
+glium = "0.31.0"
+image = "0.23.14"

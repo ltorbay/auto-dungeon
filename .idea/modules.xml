@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/../Fyrox/Fyrox.iml" filepath="$PROJECT_DIR$/../Fyrox/Fyrox.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/auto-dungeon.iml" filepath="$PROJECT_DIR$/.idea/auto-dungeon.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../fyrox-refacto/fyrox-refacto.iml" filepath="$PROJECT_DIR$/../fyrox-refacto/fyrox-refacto.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../glium-refacto/glium-refacto.iml" filepath="$PROJECT_DIR$/../glium-refacto/glium-refacto.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../glium-textured-wall/glium-textured-wall.iml" filepath="$PROJECT_DIR$/../glium-textured-wall/glium-textured-wall.iml" />
+    </modules>
+  </component>
+</project>
